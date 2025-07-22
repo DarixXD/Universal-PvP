@@ -12,7 +12,7 @@
       background-color: #0d0d0d;
       color: #00ffcc;
       text-align: center;
-      padding: 50px;
+      padding: 40px;
     }
 
     h1 {
@@ -20,17 +20,38 @@
       margin-bottom: 0.2em;
     }
 
-    img {
-      width: 128px;
-      margin-top: 20px;
-    }
-
     .box {
-      margin-top: 30px;
       background-color: #1a1a1a;
       padding: 20px;
       border-radius: 10px;
       display: inline-block;
+      margin-top: 30px;
+    }
+
+    button {
+      background-color: #00ffcc;
+      border: none;
+      color: #000;
+      padding: 10px 20px;
+      font-size: 1.1em;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #00c2a8;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+
+    #history {
+      margin-top: 30px;
+      color: #aaa;
+      font-size: 0.9em;
     }
   </style>
 </head>
@@ -39,11 +60,58 @@
   <p>¡Bienvenido a tu sistema de cajas con probabilidades!</p>
 
   <div class="box">
-    <p>🔮 Aquí pronto aparecerán resultados aleatorios de tus cajas mágicas</p>
-    <button onclick="alert('¡Probabilidad activada! 🎲')">Abrir caja</button>
+    <p>🎁 Haz clic para abrir una caja:</p>
+    <button onclick="abrirCaja()">Abrir caja</button>
+    <div id="result">🧪 Resultado: ninguno aún</div>
   </div>
 
-  <img src="https://i.imgur.com/dwWvkC0.png" alt="Universal PvP Logo" />
+  <div id="history"></div>
+
+  <script>
+    const premios = [
+      { nombre: "Espada Legendaria", prob: 5 },
+      { nombre: "Armadura de Hierro", prob: 15 },
+      { nombre: "100 Monedas", prob: 30 },
+      { nombre: "Nada 😞", prob: 50 }
+    ];
+
+    function abrirCaja() {
+      let total = premios.reduce((sum, item) => sum + item.prob, 0);
+      let random = Math.random() * total;
+      let acumulado = 0;
+      let resultado = "Nada";
+
+      for (let item of premios) {
+        acumulado += item.prob;
+        if (random <= acumulado) {
+          resultado = item.nombre;
+          break;
+        }
+      }
+
+      document.getElementById("result").textContent = "🧪 Resultado: " + resultado;
+
+      // Guardar historial
+      let historial = JSON.parse(localStorage.getItem("historial") || "[]");
+      historial.push(resultado);
+      localStorage.setItem("historial", JSON.stringify(historial));
+      mostrarHistorial(historial);
+    }
+
+    function mostrarHistorial(historial) {
+      let html = "<h3>📜 Últimos resultados:</h3><ul>";
+      let ultimos = historial.slice(-5).reverse();
+      for (let item of ultimos) {
+        html += "<li>" + item + "</li>";
+      }
+      html += "</ul>";
+      document.getElementById("history").innerHTML = html;
+    }
+
+    // Cargar historial al iniciar
+    mostrarHistorial(JSON.parse(localStorage.getItem("historial") || "[]"));
+  </script>
 </body>
 </html>
+
 
