@@ -2,48 +2,59 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Universal PvP - Simulador de Cajas</title>
+  <title>Simulador de Cajas - Universal PvP</title>
   <style>
     body {
-      background-color: #111;
+      background: #111;
       color: #0ff;
       font-family: sans-serif;
       text-align: center;
       padding: 20px;
     }
     input, button {
-      padding: 8px;
       margin: 5px;
+      padding: 8px;
     }
     #imagenResultado {
       margin-top: 10px;
       max-width: 200px;
       display: none;
     }
+    .conjunto {
+      background: #222;
+      border: 1px solid #0ff;
+      margin: 5px;
+      padding: 10px;
+    }
   </style>
 </head>
 <body>
   <h1>🎮 Universal PvP - Simulador de Cajas</h1>
 
-  <input id="nombre" placeholder="Nombre del premio" />
-  <input id="porcentaje" type="number" placeholder="Probabilidad" />
-  <input id="imagen" placeholder="URL de imagen (opcional)" />
+  <input id="nombre" placeholder="Nombre del premio">
+  <input id="porcentaje" type="number" placeholder="Probabilidad">
+  <input id="imagen" placeholder="URL de imagen (opcional)">
   <button onclick="agregarCaja()">Agregar caja</button>
-  <button onclick="abrirCaja()">🎁 Abrir caja</button>
-  <button onclick="limpiar()">🗑 Limpiar todo</button>
+  <br><br>
+
+  <button onclick="mostrarGuardar()">💾 Guardar conjunto</button>
+  <button onclick="mostrarCargar()">📂 Cargar</button>
+  <br><br>
+
+  <div id="guardarSeccion" style="display:none;">
+    <input id="nombreConjunto" placeholder="Nombre del conjunto">
+    <button onclick="guardarConjunto()">Guardar</button>
+  </div>
 
   <ul id="lista"></ul>
 
   <h2 id="resultado">Resultado: -</h2>
   <img id="imagenResultado" src="">
 
-  <script>
-    let cajas = JSON.parse(localStorage.getItem("cajas")) || [];
+  <div id="conjuntosGuardados" style="margin-top: 30px;"></div>
 
-    function guardar() {
-      localStorage.setItem("cajas", JSON.stringify(cajas));
-    }
+  <script>
+    let cajas = [];
 
     function agregarCaja() {
       const nombre = document.getElementById("nombre").value;
@@ -51,14 +62,12 @@
       const imagen = document.getElementById("imagen").value;
 
       if (!nombre || isNaN(porcentaje) || porcentaje <= 0) {
-        alert("Nombre y probabilidad válidos requeridos.");
+        alert("Datos inválidos.");
         return;
       }
 
       cajas.push({ nombre, porcentaje, imagen });
-      guardar();
       actualizarLista();
-
       document.getElementById("nombre").value = "";
       document.getElementById("porcentaje").value = "";
       document.getElementById("imagen").value = "";
@@ -69,7 +78,7 @@
       lista.innerHTML = "";
       cajas.forEach(caja => {
         const li = document.createElement("li");
-        li.textContent = `${caja.nombre} (${caja.porcentaje})`;
+        li.textContent = `${caja.nombre} (${caja.porcentaje}%)`;
         lista.appendChild(li);
       });
     }
@@ -95,18 +104,61 @@
       }
     }
 
-    function limpiar() {
-      if (confirm("¿Seguro que quieres borrar todo?")) {
-        cajas = [];
-        guardar();
-        actualizarLista();
-        document.getElementById("resultado").textContent = "Resultado: -";
-        document.getElementById("imagenResultado").style.display = "none";
+    function mostrarGuardar() {
+      document.getElementById("guardarSeccion").style.display = "block";
+    }
+
+    function guardarConjunto() {
+      const nombre = document.getElementById("nombreConjunto").value.trim();
+      if (!nombre) {
+        alert("Ponle un nombre al conjunto");
+        return;
+      }
+
+      let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
+      guardados[nombre] = cajas;
+      localStorage.setItem("conjuntos", JSON.stringify(guardados));
+      document.getElementById("nombreConjunto").value = "";
+      document.getElementById("guardarSeccion").style.display = "none";
+      alert("¡Guardado exitosamente!");
+    }
+
+    function mostrarCargar() {
+      const contenedor = document.getElementById("conjuntosGuardados");
+      contenedor.innerHTML = "<h3>Conjuntos guardados:</h3>";
+      let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
+
+      for (const nombre in guardados) {
+        const div = document.createElement("div");
+        div.className = "conjunto";
+        div.innerHTML = `
+          <strong>${nombre}</strong><br>
+          <button onclick="cargarConjunto('${nombre}')">Cargar</button>
+          <button onclick="eliminarConjunto('${nombre}')">Eliminar</button>
+        `;
+        contenedor.appendChild(div);
       }
     }
 
-    actualizarLista();
+    function cargarConjunto(nombre) {
+      let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
+      cajas = guardados[nombre];
+      actualizarLista();
+      document.getElementById("resultado").textContent = "Resultado: -";
+      document.getElementById("imagenResultado").style.display = "none";
+    }
+
+    function eliminarConjunto(nombre) {
+      if (confirm(`¿Eliminar el conjunto "${nombre}"?`)) {
+        let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
+        delete guardados[nombre];
+        localStorage.setItem("conjuntos", JSON.stringify(guardados));
+        mostrarCargar();
+      }
+    }
   </script>
+
+  <br>
+  <button onclick="abrirCaja()">🎲 Abrir caja</button>
 </body>
 </html>
-
