@@ -2,23 +2,25 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Simulador de Cajas - Universal PvP</title>
+  <title>Universal PvP - Simulador de Cajas</title>
   <style>
     body {
       background: #111;
       color: #0ff;
       font-family: sans-serif;
-      text-align: center;
       padding: 20px;
+      text-align: center;
     }
-    input, button {
-      margin: 5px;
-      padding: 8px;
+    .caja {
+      background: #222;
+      border: 1px solid #0ff;
+      padding: 10px;
+      margin: 10px auto;
+      max-width: 400px;
     }
-    #imagenResultado {
-      margin-top: 10px;
-      max-width: 200px;
-      display: none;
+    input {
+      padding: 5px;
+      margin: 3px;
     }
     .conjunto {
       background: #222;
@@ -26,28 +28,32 @@
       margin: 5px;
       padding: 10px;
     }
+    button {
+      margin: 5px;
+      padding: 7px 12px;
+    }
+    img {
+      max-width: 200px;
+      margin-top: 10px;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <h1>🎮 Universal PvP - Simulador de Cajas</h1>
 
-  <input id="nombre" placeholder="Nombre del premio">
-  <input id="porcentaje" type="number" placeholder="Probabilidad">
-  <input id="imagen" placeholder="URL de imagen (opcional)">
-  <button onclick="agregarCaja()">Agregar caja</button>
-  <br><br>
-
+  <button onclick="agregarCaja()">📦 Agregar caja</button>
   <button onclick="mostrarGuardar()">💾 Guardar conjunto</button>
   <button onclick="mostrarCargar()">📂 Cargar</button>
-  <br><br>
 
-  <div id="guardarSeccion" style="display:none;">
+  <div id="guardarSeccion" style="margin-top: 10px; display: none;">
     <input id="nombreConjunto" placeholder="Nombre del conjunto">
     <button onclick="guardarConjunto()">Guardar</button>
   </div>
 
-  <ul id="lista"></ul>
+  <div id="contenedorCajas"></div>
 
+  <button onclick="abrirCaja()">🎲 Abrir caja</button>
   <h2 id="resultado">Resultado: -</h2>
   <img id="imagenResultado" src="">
 
@@ -56,45 +62,63 @@
   <script>
     let cajas = [];
 
-    function agregarCaja() {
-      const nombre = document.getElementById("nombre").value;
-      const porcentaje = parseFloat(document.getElementById("porcentaje").value);
-      const imagen = document.getElementById("imagen").value;
+    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '' }) {
+      const contenedor = document.getElementById("contenedorCajas");
 
-      if (!nombre || isNaN(porcentaje) || porcentaje <= 0) {
-        alert("Datos inválidos.");
-        return;
-      }
+      const div = document.createElement("div");
+      div.className = "caja";
 
-      cajas.push({ nombre, porcentaje, imagen });
-      actualizarLista();
-      document.getElementById("nombre").value = "";
-      document.getElementById("porcentaje").value = "";
-      document.getElementById("imagen").value = "";
-    }
+      const inputNombre = document.createElement("input");
+      inputNombre.placeholder = "Nombre";
+      inputNombre.value = data.nombre;
 
-    function actualizarLista() {
-      const lista = document.getElementById("lista");
-      lista.innerHTML = "";
-      cajas.forEach(caja => {
-        const li = document.createElement("li");
-        li.textContent = `${caja.nombre} (${caja.porcentaje}%)`;
-        lista.appendChild(li);
+      const inputPorcentaje = document.createElement("input");
+      inputPorcentaje.type = "number";
+      inputPorcentaje.placeholder = "Probabilidad";
+      inputPorcentaje.value = data.porcentaje;
+
+      const inputImagen = document.createElement("input");
+      inputImagen.placeholder = "URL de imagen";
+      inputImagen.value = data.imagen;
+
+      const btnEliminar = document.createElement("button");
+      btnEliminar.textContent = "❌ Eliminar";
+      btnEliminar.onclick = () => {
+        contenedor.removeChild(div);
+        cajas = cajas.filter(c => c.element !== div);
+      };
+
+      div.appendChild(inputNombre);
+      div.appendChild(inputPorcentaje);
+      div.appendChild(inputImagen);
+      div.appendChild(btnEliminar);
+
+      contenedor.appendChild(div);
+
+      cajas.push({
+        element: div,
+        get nombre() { return inputNombre.value; },
+        get porcentaje() { return parseFloat(inputPorcentaje.value); },
+        get imagen() { return inputImagen.value; }
       });
     }
 
     function abrirCaja() {
-      const total = cajas.reduce((sum, c) => sum + c.porcentaje, 0);
+      const total = cajas.reduce((sum, c) => sum + (isNaN(c.porcentaje) ? 0 : c.porcentaje), 0);
+      if (total <= 0) {
+        alert("No hay cajas con probabilidad válida");
+        return;
+      }
       const rnd = Math.random() * total;
       let acumulado = 0;
 
-      for (const caja of cajas) {
-        acumulado += caja.porcentaje;
+      for (const c of cajas) {
+        acumulado += c.porcentaje;
         if (rnd <= acumulado) {
-          document.getElementById("resultado").textContent = "Resultado: " + caja.nombre;
+          document.getElementById("resultado").textContent = "Resultado: " + c.nombre;
           const img = document.getElementById("imagenResultado");
-          if (caja.imagen) {
-            img.src = caja.imagen;
+          if (c.imagen) {
+            img.src = c.imagen;
             img.style.display = "block";
           } else {
             img.style.display = "none";
@@ -110,17 +134,21 @@
 
     function guardarConjunto() {
       const nombre = document.getElementById("nombreConjunto").value.trim();
-      if (!nombre) {
-        alert("Ponle un nombre al conjunto");
-        return;
-      }
+      if (!nombre) return alert("Ponle un nombre al conjunto");
+
+      const data = cajas.map(c => ({
+        nombre: c.nombre,
+        porcentaje: c.porcentaje,
+        imagen: c.imagen
+      }));
 
       let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
-      guardados[nombre] = cajas;
+      guardados[nombre] = data;
       localStorage.setItem("conjuntos", JSON.stringify(guardados));
+
+      alert("¡Conjunto guardado!");
       document.getElementById("nombreConjunto").value = "";
       document.getElementById("guardarSeccion").style.display = "none";
-      alert("¡Guardado exitosamente!");
     }
 
     function mostrarCargar() {
@@ -142,8 +170,12 @@
 
     function cargarConjunto(nombre) {
       let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
-      cajas = guardados[nombre];
-      actualizarLista();
+      const data = guardados[nombre];
+
+      cajas = [];
+      document.getElementById("contenedorCajas").innerHTML = "";
+      data.forEach(caja => agregarCaja(caja));
+
       document.getElementById("resultado").textContent = "Resultado: -";
       document.getElementById("imagenResultado").style.display = "none";
     }
@@ -157,8 +189,5 @@
       }
     }
   </script>
-
-  <br>
-  <button onclick="abrirCaja()">🎲 Abrir caja</button>
 </body>
 </html>
