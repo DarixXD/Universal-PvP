@@ -1,21 +1,20 @@
 {
   "name": "Universal PvP",
-  "short_name": "UniPvP",
-  "start_url": "./index.html",
+  "short_name": "PvP",
+  "start_url": ".",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1e1e1e",
+  "background_color": "#000000",
+  "theme_color": "#00ffff",
   "icons": [
     {
-      "src": "icono192_text.png",
+      "src": "icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icono512_text.png",
+      "src": "icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
   ]
 }
-
