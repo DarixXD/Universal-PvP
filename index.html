@@ -1,78 +1,44 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Universal PvP</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="icon" href="https://i.imgur.com/dwWvkC0.png" type="image/png" />
+  <meta charset="UTF-8">
+  <title>Simulador de Cajas</title>
   <style>
     body {
-      background-color: #0d0d0d;
-      color: #00ffcc;
-      font-family: Arial, sans-serif;
+      background-color: #111;
+      color: #0ff;
+      font-family: sans-serif;
       text-align: center;
       padding: 20px;
     }
-
-    input {
-      padding: 10px;
-      margin: 5px;
-      border-radius: 5px;
-      border: none;
-    }
-
-    button {
-      background: #00ffcc;
-      border: none;
-      padding: 10px 20px;
-      font-weight: bold;
-      cursor: pointer;
-      border-radius: 5px;
+    input, button {
+      padding: 8px;
       margin: 5px;
     }
-
-    #resultado {
-      margin-top: 20px;
-      font-size: 1.3em;
-    }
-
     #imagenResultado {
       margin-top: 10px;
       max-width: 200px;
-    }
-
-    li {
-      list-style: none;
-      margin: 8px;
-      background-color: #1a1a1a;
-      padding: 10px;
-      border-radius: 5px;
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h1>🌌 Universal PvP - Simulador de Cajas</h1>
+  <h1>🎁 Simulador de Cajas</h1>
 
-  <input id="nombre" type="text" placeholder="Nombre del premio">
+  <input id="nombre" placeholder="Nombre del premio">
   <input id="porcentaje" type="number" placeholder="Probabilidad">
-  <input id="imagen" type="text" placeholder="URL de imagen">
+  <input id="imagen" placeholder="URL de imagen (opcional)">
   <button onclick="agregarCaja()">Agregar caja</button>
-  <button onclick="limpiarCajas()">🗑 Limpiar todo</button>
+  <button onclick="abrirCaja()">Abrir caja</button>
+  <button onclick="limpiar()">Limpiar todo</button>
 
   <ul id="lista"></ul>
 
-  <button onclick="abrirCaja()">🎁 Abrir caja</button>
-
-  <div id="resultado">Resultado: ninguno aún</div>
-  <img id="imagenResultado" src="" alt="Imagen del resultado" style="display:none"/>
+  <h2 id="resultado">Resultado: -</h2>
+  <img id="imagenResultado" src="">
 
   <script>
-    let cajas = JSON.parse(localStorage.getItem("cajas")) || [];
-
-    function guardarCajas() {
-      localStorage.setItem("cajas", JSON.stringify(cajas));
-    }
+    let cajas = [];
 
     function agregarCaja() {
       const nombre = document.getElementById("nombre").value;
@@ -80,14 +46,14 @@
       const imagen = document.getElementById("imagen").value;
 
       if (!nombre || isNaN(porcentaje) || porcentaje <= 0) {
-        alert("Nombre y porcentaje válidos son obligatorios.");
+        alert("Nombre y probabilidad válidos requeridos.");
         return;
       }
 
       cajas.push({ nombre, porcentaje, imagen });
-      guardarCajas();
       actualizarLista();
 
+      // limpiar inputs
       document.getElementById("nombre").value = "";
       document.getElementById("porcentaje").value = "";
       document.getElementById("imagen").value = "";
@@ -96,57 +62,40 @@
     function actualizarLista() {
       const lista = document.getElementById("lista");
       lista.innerHTML = "";
-      cajas.forEach((caja, i) => {
+      cajas.forEach(caja => {
         const li = document.createElement("li");
-        li.textContent = `${caja.nombre} (${caja.probabilidad || caja.porcentaje}%)`;
+        li.textContent = `${caja.nombre} (${caja.porcentaje}%)`;
         lista.appendChild(li);
       });
     }
 
     function abrirCaja() {
-      if (cajas.length === 0) {
-        alert("Agrega al menos una caja.");
-        return;
-      }
-
       const total = cajas.reduce((sum, c) => sum + c.porcentaje, 0);
-      let random = Math.random() * total;
+      const rnd = Math.random() * total;
       let acumulado = 0;
 
       for (const caja of cajas) {
         acumulado += caja.porcentaje;
-        if (random <= acumulado) {
+        if (rnd <= acumulado) {
           document.getElementById("resultado").textContent = "Resultado: " + caja.nombre;
 
-          const img = document.getElementById("imagenResultado");
           if (caja.imagen) {
+            const img = document.getElementById("imagenResultado");
             img.src = caja.imagen;
             img.style.display = "block";
           } else {
-            img.style.display = "none";
+            document.getElementById("imagenResultado").style.display = "none";
           }
           return;
         }
       }
     }
 
-    function limpiarCajas() {
-      if (!confirm("¿Seguro que quieres eliminar todas las cajas?")) return;
+    function limpiar() {
       cajas = [];
-      guardarCajas();
-      actualizarLista();
-      document.getElementById("resultado").textContent = "Resultado: ninguno aún";
+      document.getElementById("lista").innerHTML = "";
+      document.getElementById("resultado").textContent = "Resultado: -";
       document.getElementById("imagenResultado").style.display = "none";
-    }
-
-    actualizarLista();
-  </script>
-
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(() => console.log("✅ Service Worker registrado"))
-        .catch(err => console.error("❌ Error:", err));
     }
   </script>
 </body>
