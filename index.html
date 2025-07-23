@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Simulador de Cajas</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Universal PvP - Simulador de Cajas</title>
   <style>
     body {
       background-color: #111;
@@ -23,14 +24,14 @@
   </style>
 </head>
 <body>
-  <h1>🎁 Simulador de Cajas</h1>
+  <h1>🎮 Universal PvP - Simulador de Cajas</h1>
 
-  <input id="nombre" placeholder="Nombre del premio">
-  <input id="porcentaje" type="number" placeholder="Probabilidad">
-  <input id="imagen" placeholder="URL de imagen (opcional)">
+  <input id="nombre" placeholder="Nombre del premio" />
+  <input id="porcentaje" type="number" placeholder="Probabilidad" />
+  <input id="imagen" placeholder="URL de imagen (opcional)" />
   <button onclick="agregarCaja()">Agregar caja</button>
-  <button onclick="abrirCaja()">Abrir caja</button>
-  <button onclick="limpiar()">Limpiar todo</button>
+  <button onclick="abrirCaja()">🎁 Abrir caja</button>
+  <button onclick="limpiar()">🗑 Limpiar todo</button>
 
   <ul id="lista"></ul>
 
@@ -38,7 +39,11 @@
   <img id="imagenResultado" src="">
 
   <script>
-    let cajas = [];
+    let cajas = JSON.parse(localStorage.getItem("cajas")) || [];
+
+    function guardar() {
+      localStorage.setItem("cajas", JSON.stringify(cajas));
+    }
 
     function agregarCaja() {
       const nombre = document.getElementById("nombre").value;
@@ -51,9 +56,9 @@
       }
 
       cajas.push({ nombre, porcentaje, imagen });
+      guardar();
       actualizarLista();
 
-      // limpiar inputs
       document.getElementById("nombre").value = "";
       document.getElementById("porcentaje").value = "";
       document.getElementById("imagen").value = "";
@@ -64,7 +69,7 @@
       lista.innerHTML = "";
       cajas.forEach(caja => {
         const li = document.createElement("li");
-        li.textContent = `${caja.nombre} (${caja.porcentaje}%)`;
+        li.textContent = `${caja.nombre} (${caja.porcentaje})`;
         lista.appendChild(li);
       });
     }
@@ -78,13 +83,12 @@
         acumulado += caja.porcentaje;
         if (rnd <= acumulado) {
           document.getElementById("resultado").textContent = "Resultado: " + caja.nombre;
-
+          const img = document.getElementById("imagenResultado");
           if (caja.imagen) {
-            const img = document.getElementById("imagenResultado");
             img.src = caja.imagen;
             img.style.display = "block";
           } else {
-            document.getElementById("imagenResultado").style.display = "none";
+            img.style.display = "none";
           }
           return;
         }
@@ -92,14 +96,17 @@
     }
 
     function limpiar() {
-      cajas = [];
-      document.getElementById("lista").innerHTML = "";
-      document.getElementById("resultado").textContent = "Resultado: -";
-      document.getElementById("imagenResultado").style.display = "none";
+      if (confirm("¿Seguro que quieres borrar todo?")) {
+        cajas = [];
+        guardar();
+        actualizarLista();
+        document.getElementById("resultado").textContent = "Resultado: -";
+        document.getElementById("imagenResultado").style.display = "none";
+      }
     }
+
+    actualizarLista();
   </script>
 </body>
 </html>
-
-
 
