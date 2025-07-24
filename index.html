@@ -40,11 +40,6 @@
       margin: 10px auto;
       max-width: 400px;
     }
-    img {
-      max-width: 200px;
-      margin-top: 10px;
-      display: block;
-    }
   </style>
 </head>
 <body>
@@ -144,26 +139,20 @@
       div.className = "espera";
 
       let tiempoRestante = (caja.tiempo || 1) * 60;
-      const nombre = caja.nombre || "Caja misteriosa";
 
       const texto = document.createElement("p");
-      const img = document.createElement("img");
-      img.src = caja.imagen || "";
-      img.style.display = "none";
 
       div.appendChild(texto);
-      div.appendChild(img);
       cont.appendChild(div);
 
       const interval = setInterval(() => {
         const minutos = Math.floor(tiempoRestante / 60);
         const segundos = tiempoRestante % 60;
-        texto.textContent = `⏳ ${nombre} se abrirá en: ${minutos}:${segundos.toString().padStart(2, '0')}`;
+        texto.textContent = `⏳ Una caja se abrirá en: ${minutos}:${segundos.toString().padStart(2, '0')}`;
 
         if (tiempoRestante <= 0) {
           clearInterval(interval);
-          texto.textContent = `🎉 ¡Se abrió: ${nombre}!`;
-          if (caja.imagen) img.style.display = "block";
+          texto.textContent = `🎉 ¡Una de tus Cajas ha sido Abierta!`;
 
           if (Notification.permission === "granted") {
             new Notification("¡Una de tus Cajas Ha sido Abierta!");
