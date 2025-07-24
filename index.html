@@ -3,11 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Universal PvP - Simulador de Cajas</title>
-  
-  <!-- Icono y Manifest -->
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="universal_pvp_icon_192x192.png">
-
+  <link rel="manifest" href="manifest.json" />
   <style>
     body {
       background: #111;
@@ -37,10 +33,17 @@
       margin: 5px;
       padding: 7px 12px;
     }
+    .espera {
+      background: #333;
+      border: 1px dashed #0ff;
+      padding: 10px;
+      margin: 10px auto;
+      max-width: 400px;
+    }
     img {
       max-width: 200px;
       margin-top: 10px;
-      display: none;
+      display: block;
     }
   </style>
 </head>
@@ -59,15 +62,16 @@
   <div id="contenedorCajas"></div>
 
   <button onclick="abrirCaja()">🎲 Abrir caja</button>
+
   <h2 id="resultado">Resultado: -</h2>
-  <img id="imagenResultado" src="">
+  <div id="cajasEnEspera"></div>
 
   <div id="conjuntosGuardados" style="margin-top: 30px;"></div>
 
   <script>
     let cajas = [];
 
-    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '' }) {
+    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '', tiempo: '' }) {
       const contenedor = document.getElementById("contenedorCajas");
 
       const div = document.createElement("div");
@@ -86,6 +90,11 @@
       inputImagen.placeholder = "URL de imagen";
       inputImagen.value = data.imagen;
 
+      const inputTiempo = document.createElement("input");
+      inputTiempo.type = "number";
+      inputTiempo.placeholder = "Tiempo (min)";
+      inputTiempo.value = data.tiempo || 1;
+
       const btnEliminar = document.createElement("button");
       btnEliminar.textContent = "❌ Eliminar";
       btnEliminar.onclick = () => {
@@ -96,6 +105,7 @@
       div.appendChild(inputNombre);
       div.appendChild(inputPorcentaje);
       div.appendChild(inputImagen);
+      div.appendChild(inputTiempo);
       div.appendChild(btnEliminar);
 
       contenedor.appendChild(div);
@@ -104,7 +114,8 @@
         element: div,
         get nombre() { return inputNombre.value; },
         get porcentaje() { return parseFloat(inputPorcentaje.value); },
-        get imagen() { return inputImagen.value; }
+        get imagen() { return inputImagen.value; },
+        get tiempo() { return parseFloat(inputTiempo.value); }
       });
     }
 
@@ -120,17 +131,47 @@
       for (const c of cajas) {
         acumulado += c.porcentaje;
         if (rnd <= acumulado) {
-          document.getElementById("resultado").textContent = "Resultado: " + c.nombre;
-          const img = document.getElementById("imagenResultado");
-          if (c.imagen) {
-            img.src = c.imagen;
-            img.style.display = "block";
-          } else {
-            img.style.display = "none";
-          }
+          iniciarTemporizador(c);
           return;
         }
       }
+    }
+
+    function iniciarTemporizador(caja) {
+      const cont = document.getElementById("cajasEnEspera");
+
+      const div = document.createElement("div");
+      div.className = "espera";
+
+      let tiempoRestante = (caja.tiempo || 1) * 60;
+      const nombre = caja.nombre || "Caja misteriosa";
+
+      const texto = document.createElement("p");
+      const img = document.createElement("img");
+      img.src = caja.imagen || "";
+      img.style.display = "none";
+
+      div.appendChild(texto);
+      div.appendChild(img);
+      cont.appendChild(div);
+
+      const interval = setInterval(() => {
+        const minutos = Math.floor(tiempoRestante / 60);
+        const segundos = tiempoRestante % 60;
+        texto.textContent = `⏳ ${nombre} se abrirá en: ${minutos}:${segundos.toString().padStart(2, '0')}`;
+
+        if (tiempoRestante <= 0) {
+          clearInterval(interval);
+          texto.textContent = `🎉 ¡Se abrió: ${nombre}!`;
+          if (caja.imagen) img.style.display = "block";
+
+          if (Notification.permission === "granted") {
+            new Notification("¡Una de tus Cajas Ha sido Abierta!");
+          }
+        }
+
+        tiempoRestante--;
+      }, 1000);
     }
 
     function mostrarGuardar() {
@@ -144,7 +185,8 @@
       const data = cajas.map(c => ({
         nombre: c.nombre,
         porcentaje: c.porcentaje,
-        imagen: c.imagen
+        imagen: c.imagen,
+        tiempo: c.tiempo
       }));
 
       let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
@@ -180,9 +222,6 @@
       cajas = [];
       document.getElementById("contenedorCajas").innerHTML = "";
       data.forEach(caja => agregarCaja(caja));
-
-      document.getElementById("resultado").textContent = "Resultado: -";
-      document.getElementById("imagenResultado").style.display = "none";
     }
 
     function eliminarConjunto(nombre) {
@@ -193,7 +232,11 @@
         mostrarCargar();
       }
     }
+
+    // Solicitar permiso de notificaciones
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
   </script>
 </body>
 </html>
-
