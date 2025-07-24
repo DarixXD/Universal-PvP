@@ -71,7 +71,7 @@
   <script>
     let cajas = [];
 
-    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '', tiempo: 1 }) {
+    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '', tiempo: 10 }) {
       const contenedor = document.getElementById("contenedorCajas");
 
       const div = document.createElement("div");
@@ -92,8 +92,9 @@
 
       const inputTiempo = document.createElement("input");
       inputTiempo.type = "number";
-      inputTiempo.placeholder = "Tiempo (min)";
-      inputTiempo.value = data.tiempo || 1;
+      inputTiempo.placeholder = "Tiempo (segundos)";
+      inputTiempo.step = "1";
+      inputTiempo.value = data.tiempo ?? 10;
 
       const btnEliminar = document.createElement("button");
       btnEliminar.textContent = "❌ Eliminar";
@@ -140,18 +141,24 @@
     function iniciarTemporizador(caja) {
       const esperaDiv = document.createElement("div");
       esperaDiv.className = "espera";
+
       const texto = document.createElement("div");
       const img = document.createElement("img");
       img.style.display = "none";
+
+      const btnEliminar = document.createElement("button");
+      btnEliminar.textContent = "❌ Eliminar resultado";
+      btnEliminar.style.display = "none";
+      btnEliminar.onclick = () => esperaDiv.remove();
+
       esperaDiv.appendChild(texto);
       esperaDiv.appendChild(img);
+      esperaDiv.appendChild(btnEliminar);
       document.getElementById("cajasEnEspera").appendChild(esperaDiv);
 
-      let tiempoRestante = caja.tiempo * 60;
+      let tiempoRestante = Math.round(caja.tiempo);
       const intervalo = setInterval(() => {
-        const minutos = Math.floor(tiempoRestante / 60);
-        const segundos = tiempoRestante % 60;
-        texto.textContent = `⏳ Abriendo caja en: ${minutos}:${segundos.toString().padStart(2, '0')}`;
+        texto.textContent = `⏳ Abriendo caja en: ${tiempoRestante}s`;
         tiempoRestante--;
 
         if (tiempoRestante < 0) {
@@ -161,8 +168,9 @@
             img.src = caja.imagen;
             img.style.display = "block";
           }
+          btnEliminar.style.display = "inline-block";
 
-          // Enviar notificación
+          // Notificación
           if (Notification.permission === "granted") {
             new Notification("¡Una de tus Cajas Ha sido Abierta!");
           } else if (Notification.permission !== "denied") {
@@ -238,7 +246,7 @@
       }
     }
 
-    // Solicitar permiso de notificaciones al cargar
+    // Solicitar notificaciones al iniciar
     if (Notification.permission !== "granted" && Notification.permission !== "denied") {
       Notification.requestPermission();
     }
