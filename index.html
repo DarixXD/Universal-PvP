@@ -40,6 +40,10 @@
       margin: 10px auto;
       max-width: 400px;
     }
+    img {
+      max-width: 200px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -59,6 +63,7 @@
   <button onclick="abrirCaja()">🎲 Abrir caja</button>
 
   <h2 id="resultado">Resultado: -</h2>
+  <img id="imagenResultado" src="" style="display:none;">
   <div id="cajasEnEspera"></div>
 
   <div id="conjuntosGuardados" style="margin-top: 30px;"></div>
@@ -66,7 +71,7 @@
   <script>
     let cajas = [];
 
-    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '', tiempo: '' }) {
+    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '', tiempo: 1 }) {
       const contenedor = document.getElementById("contenedorCajas");
 
       const div = document.createElement("div");
@@ -133,33 +138,41 @@
     }
 
     function iniciarTemporizador(caja) {
-      const cont = document.getElementById("cajasEnEspera");
+      const esperaDiv = document.createElement("div");
+      esperaDiv.className = "espera";
+      const texto = document.createElement("div");
+      const img = document.createElement("img");
+      img.style.display = "none";
+      esperaDiv.appendChild(texto);
+      esperaDiv.appendChild(img);
+      document.getElementById("cajasEnEspera").appendChild(esperaDiv);
 
-      const div = document.createElement("div");
-      div.className = "espera";
-
-      let tiempoRestante = (caja.tiempo || 1) * 60;
-
-      const texto = document.createElement("p");
-
-      div.appendChild(texto);
-      cont.appendChild(div);
-
-      const interval = setInterval(() => {
+      let tiempoRestante = caja.tiempo * 60;
+      const intervalo = setInterval(() => {
         const minutos = Math.floor(tiempoRestante / 60);
         const segundos = tiempoRestante % 60;
-        texto.textContent = `⏳ Una caja se abrirá en: ${minutos}:${segundos.toString().padStart(2, '0')}`;
+        texto.textContent = `⏳ Abriendo caja en: ${minutos}:${segundos.toString().padStart(2, '0')}`;
+        tiempoRestante--;
 
-        if (tiempoRestante <= 0) {
-          clearInterval(interval);
-          texto.textContent = `🎉 ¡Una de tus Cajas ha sido Abierta!`;
+        if (tiempoRestante < 0) {
+          clearInterval(intervalo);
+          texto.textContent = `🎉 ¡Resultado: ${caja.nombre}!`;
+          if (caja.imagen) {
+            img.src = caja.imagen;
+            img.style.display = "block";
+          }
 
+          // Enviar notificación
           if (Notification.permission === "granted") {
             new Notification("¡Una de tus Cajas Ha sido Abierta!");
+          } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+              if (permission === "granted") {
+                new Notification("¡Una de tus Cajas Ha sido Abierta!");
+              }
+            });
           }
         }
-
-        tiempoRestante--;
       }, 1000);
     }
 
@@ -211,6 +224,9 @@
       cajas = [];
       document.getElementById("contenedorCajas").innerHTML = "";
       data.forEach(caja => agregarCaja(caja));
+
+      document.getElementById("resultado").textContent = "Resultado: -";
+      document.getElementById("imagenResultado").style.display = "none";
     }
 
     function eliminarConjunto(nombre) {
@@ -222,8 +238,8 @@
       }
     }
 
-    // Solicitar permiso de notificaciones
-    if ("Notification" in window && Notification.permission !== "granted") {
+    // Solicitar permiso de notificaciones al cargar
+    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
       Notification.requestPermission();
     }
   </script>
