@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>Universal PvP - Simulador de Cajas</title>
-  <link rel="manifest" href="manifest.json" />
   <style>
     body {
       background: #111;
@@ -19,26 +18,20 @@
       margin: 10px auto;
       max-width: 400px;
     }
-    input {
+    input, select {
       padding: 5px;
       margin: 3px;
     }
-    .conjunto {
+    .conjunto, .espera {
       background: #222;
       border: 1px solid #0ff;
-      margin: 5px;
+      margin: 5px auto;
       padding: 10px;
+      max-width: 400px;
     }
     button {
       margin: 5px;
       padding: 7px 12px;
-    }
-    .espera {
-      background: #333;
-      border: 1px dashed #0ff;
-      padding: 10px;
-      margin: 10px auto;
-      max-width: 400px;
     }
     img {
       max-width: 200px;
@@ -48,6 +41,19 @@
 </head>
 <body>
   <h1>🎮 Universal PvP - Simulador de Cajas</h1>
+
+  <div>
+    <label>⏱ Tiempo de espera (segundos): </label>
+    <input id="tiempoGlobal" type="number" value="5" min="0" />
+    <br>
+    <label>🔔 Activar temporizador y notificación: </label>
+    <input id="usarTemporizador" type="checkbox" checked />
+    <br>
+    <label>📦 Permitir abrir varias cajas a la vez: </label>
+    <input id="permitirMultiples" type="checkbox" />
+  </div>
+
+  <hr>
 
   <button onclick="agregarCaja()">📦 Agregar caja</button>
   <button onclick="mostrarGuardar()">💾 Guardar conjunto</button>
@@ -59,19 +65,16 @@
   </div>
 
   <div id="contenedorCajas"></div>
-
   <button onclick="abrirCaja()">🎲 Abrir caja</button>
 
-  <h2 id="resultado">Resultado: -</h2>
-  <img id="imagenResultado" src="" style="display:none;">
-  <div id="cajasEnEspera"></div>
-
+  <div id="esperasActivas"></div>
   <div id="conjuntosGuardados" style="margin-top: 30px;"></div>
 
   <script>
     let cajas = [];
+    let cajaAbierta = false;
 
-    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '', tiempo: 10 }) {
+    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '' }) {
       const contenedor = document.getElementById("contenedorCajas");
 
       const div = document.createElement("div");
@@ -90,12 +93,6 @@
       inputImagen.placeholder = "URL de imagen";
       inputImagen.value = data.imagen;
 
-      const inputTiempo = document.createElement("input");
-      inputTiempo.type = "number";
-      inputTiempo.placeholder = "Tiempo (segundos)";
-      inputTiempo.step = "1";
-      inputTiempo.value = data.tiempo ?? 10;
-
       const btnEliminar = document.createElement("button");
       btnEliminar.textContent = "❌ Eliminar";
       btnEliminar.onclick = () => {
@@ -106,7 +103,6 @@
       div.appendChild(inputNombre);
       div.appendChild(inputPorcentaje);
       div.appendChild(inputImagen);
-      div.appendChild(inputTiempo);
       div.appendChild(btnEliminar);
 
       contenedor.appendChild(div);
@@ -115,30 +111,43 @@
         element: div,
         get nombre() { return inputNombre.value; },
         get porcentaje() { return parseFloat(inputPorcentaje.value); },
-        get imagen() { return inputImagen.value; },
-        get tiempo() { return parseFloat(inputTiempo.value); }
+        get imagen() { return inputImagen.value; }
       });
     }
 
     function abrirCaja() {
+      const tiempo = parseInt(document.getElementById("tiempoGlobal").value);
+      const usarTemporizador = document.getElementById("usarTemporizador").checked;
+      const multiples = document.getElementById("permitirMultiples").checked;
+
+      if (!multiples && cajaAbierta && usarTemporizador && tiempo > 0) {
+        alert("Ya hay una caja abriéndose.");
+        return;
+      }
+
       const total = cajas.reduce((sum, c) => sum + (isNaN(c.porcentaje) ? 0 : c.porcentaje), 0);
       if (total <= 0) {
         alert("No hay cajas con probabilidad válida");
         return;
       }
+
       const rnd = Math.random() * total;
       let acumulado = 0;
-
       for (const c of cajas) {
         acumulado += c.porcentaje;
         if (rnd <= acumulado) {
-          iniciarTemporizador(c);
+          if (usarTemporizador && tiempo > 0) {
+            iniciarTemporizador(c, tiempo);
+          } else {
+            mostrarResultado(c);
+          }
           return;
         }
       }
     }
 
-    function iniciarTemporizador(caja) {
+    function iniciarTemporizador(caja, segundos) {
+      cajaAbierta = true;
       const esperaDiv = document.createElement("div");
       esperaDiv.className = "espera";
 
@@ -149,16 +158,19 @@
       const btnEliminar = document.createElement("button");
       btnEliminar.textContent = "❌ Eliminar resultado";
       btnEliminar.style.display = "none";
-      btnEliminar.onclick = () => esperaDiv.remove();
+      btnEliminar.onclick = () => {
+        esperaDiv.remove();
+        cajaAbierta = false;
+      };
 
       esperaDiv.appendChild(texto);
       esperaDiv.appendChild(img);
       esperaDiv.appendChild(btnEliminar);
-      document.getElementById("cajasEnEspera").appendChild(esperaDiv);
+      document.getElementById("esperasActivas").appendChild(esperaDiv);
 
-      let tiempoRestante = Math.round(caja.tiempo);
+      let tiempoRestante = segundos;
       const intervalo = setInterval(() => {
-        texto.textContent = `⏳ Abriendo caja en: ${tiempoRestante}s`;
+        texto.textContent = `⏳ Esperando: ${tiempoRestante}s`;
         tiempoRestante--;
 
         if (tiempoRestante < 0) {
@@ -169,6 +181,7 @@
             img.style.display = "block";
           }
           btnEliminar.style.display = "inline-block";
+          cajaAbierta = false;
 
           // Notificación
           if (Notification.permission === "granted") {
@@ -184,6 +197,22 @@
       }, 1000);
     }
 
+    function mostrarResultado(caja) {
+      const resultadoDiv = document.createElement("div");
+      resultadoDiv.className = "espera";
+      resultadoDiv.innerHTML = `<strong>🎉 Resultado: ${caja.nombre}</strong><br>`;
+      if (caja.imagen) {
+        const img = document.createElement("img");
+        img.src = caja.imagen;
+        resultadoDiv.appendChild(img);
+      }
+      const btnEliminar = document.createElement("button");
+      btnEliminar.textContent = "❌ Eliminar resultado";
+      btnEliminar.onclick = () => resultadoDiv.remove();
+      resultadoDiv.appendChild(btnEliminar);
+      document.getElementById("esperasActivas").appendChild(resultadoDiv);
+    }
+
     function mostrarGuardar() {
       document.getElementById("guardarSeccion").style.display = "block";
     }
@@ -195,8 +224,7 @@
       const data = cajas.map(c => ({
         nombre: c.nombre,
         porcentaje: c.porcentaje,
-        imagen: c.imagen,
-        tiempo: c.tiempo
+        imagen: c.imagen
       }));
 
       let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
@@ -232,9 +260,6 @@
       cajas = [];
       document.getElementById("contenedorCajas").innerHTML = "";
       data.forEach(caja => agregarCaja(caja));
-
-      document.getElementById("resultado").textContent = "Resultado: -";
-      document.getElementById("imagenResultado").style.display = "none";
     }
 
     function eliminarConjunto(nombre) {
@@ -246,7 +271,7 @@
       }
     }
 
-    // Solicitar notificaciones al iniciar
+    // Pedir permisos para notificaciones al cargar
     if (Notification.permission !== "granted" && Notification.permission !== "denied") {
       Notification.requestPermission();
     }
