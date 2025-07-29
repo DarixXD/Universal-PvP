@@ -18,16 +18,15 @@
       margin: 10px auto;
       max-width: 400px;
     }
-    input, select {
+    input {
       padding: 5px;
       margin: 3px;
     }
-    .conjunto, .espera {
+    .conjunto {
       background: #222;
       border: 1px solid #0ff;
-      margin: 5px auto;
+      margin: 5px;
       padding: 10px;
-      max-width: 400px;
     }
     button {
       margin: 5px;
@@ -35,25 +34,21 @@
     }
     img {
       max-width: 200px;
-      margin-top: 10px;
+      margin: 10px auto;
+      display: block;
+    }
+    #resultadoContainer {
+      border: 1px solid #0ff;
+      padding: 20px;
+      margin-top: 20px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
     }
   </style>
 </head>
 <body>
   <h1>🎮 Universal PvP - Simulador de Cajas</h1>
-
-  <div>
-    <label>⏱ Tiempo de espera (segundos): </label>
-    <input id="tiempoGlobal" type="number" value="5" min="0" />
-    <br>
-    <label>🔔 Activar temporizador y notificación: </label>
-    <input id="usarTemporizador" type="checkbox" checked />
-    <br>
-    <label>📦 Permitir abrir varias cajas a la vez: </label>
-    <input id="permitirMultiples" type="checkbox" />
-  </div>
-
-  <hr>
 
   <button onclick="agregarCaja()">📦 Agregar caja</button>
   <button onclick="mostrarGuardar()">💾 Guardar conjunto</button>
@@ -65,14 +60,19 @@
   </div>
 
   <div id="contenedorCajas"></div>
+
   <button onclick="abrirCaja()">🎲 Abrir caja</button>
 
-  <div id="esperasActivas"></div>
+  <div id="resultadoContainer" style="display: none;">
+    <h2 id="resultado">Resultado: -</h2>
+    <img id="imagenResultado" src="">
+    <button onclick="eliminarResultado()">❌ Eliminar resultado</button>
+  </div>
+
   <div id="conjuntosGuardados" style="margin-top: 30px;"></div>
 
   <script>
     let cajas = [];
-    let cajaAbierta = false;
 
     function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '' }) {
       const contenedor = document.getElementById("contenedorCajas");
@@ -116,101 +116,33 @@
     }
 
     function abrirCaja() {
-      const tiempo = parseInt(document.getElementById("tiempoGlobal").value);
-      const usarTemporizador = document.getElementById("usarTemporizador").checked;
-      const multiples = document.getElementById("permitirMultiples").checked;
-
-      if (!multiples && cajaAbierta && usarTemporizador && tiempo > 0) {
-        alert("Ya hay una caja abriéndose.");
-        return;
-      }
-
       const total = cajas.reduce((sum, c) => sum + (isNaN(c.porcentaje) ? 0 : c.porcentaje), 0);
       if (total <= 0) {
         alert("No hay cajas con probabilidad válida");
         return;
       }
-
       const rnd = Math.random() * total;
       let acumulado = 0;
+
       for (const c of cajas) {
         acumulado += c.porcentaje;
         if (rnd <= acumulado) {
-          if (usarTemporizador && tiempo > 0) {
-            iniciarTemporizador(c, tiempo);
+          document.getElementById("resultado").textContent = "🎉 ¡Resultado: " + c.nombre + "!";
+          const img = document.getElementById("imagenResultado");
+          if (c.imagen) {
+            img.src = c.imagen;
+            img.style.display = "block";
           } else {
-            mostrarResultado(c);
+            img.style.display = "none";
           }
+          document.getElementById("resultadoContainer").style.display = "block";
           return;
         }
       }
     }
 
-    function iniciarTemporizador(caja, segundos) {
-      cajaAbierta = true;
-      const esperaDiv = document.createElement("div");
-      esperaDiv.className = "espera";
-
-      const texto = document.createElement("div");
-      const img = document.createElement("img");
-      img.style.display = "none";
-
-      const btnEliminar = document.createElement("button");
-      btnEliminar.textContent = "❌ Eliminar resultado";
-      btnEliminar.style.display = "none";
-      btnEliminar.onclick = () => {
-        esperaDiv.remove();
-        cajaAbierta = false;
-      };
-
-      esperaDiv.appendChild(texto);
-      esperaDiv.appendChild(img);
-      esperaDiv.appendChild(btnEliminar);
-      document.getElementById("esperasActivas").appendChild(esperaDiv);
-
-      let tiempoRestante = segundos;
-      const intervalo = setInterval(() => {
-        texto.textContent = `⏳ Esperando: ${tiempoRestante}s`;
-        tiempoRestante--;
-
-        if (tiempoRestante < 0) {
-          clearInterval(intervalo);
-          texto.textContent = `🎉 ¡Resultado: ${caja.nombre}!`;
-          if (caja.imagen) {
-            img.src = caja.imagen;
-            img.style.display = "block";
-          }
-          btnEliminar.style.display = "inline-block";
-          cajaAbierta = false;
-
-          // Notificación
-          if (Notification.permission === "granted") {
-            new Notification("¡Una de tus Cajas Ha sido Abierta!");
-          } else if (Notification.permission !== "denied") {
-            Notification.requestPermission().then(permission => {
-              if (permission === "granted") {
-                new Notification("¡Una de tus Cajas Ha sido Abierta!");
-              }
-            });
-          }
-        }
-      }, 1000);
-    }
-
-    function mostrarResultado(caja) {
-      const resultadoDiv = document.createElement("div");
-      resultadoDiv.className = "espera";
-      resultadoDiv.innerHTML = `<strong>🎉 Resultado: ${caja.nombre}</strong><br>`;
-      if (caja.imagen) {
-        const img = document.createElement("img");
-        img.src = caja.imagen;
-        resultadoDiv.appendChild(img);
-      }
-      const btnEliminar = document.createElement("button");
-      btnEliminar.textContent = "❌ Eliminar resultado";
-      btnEliminar.onclick = () => resultadoDiv.remove();
-      resultadoDiv.appendChild(btnEliminar);
-      document.getElementById("esperasActivas").appendChild(resultadoDiv);
+    function eliminarResultado() {
+      document.getElementById("resultadoContainer").style.display = "none";
     }
 
     function mostrarGuardar() {
@@ -260,6 +192,10 @@
       cajas = [];
       document.getElementById("contenedorCajas").innerHTML = "";
       data.forEach(caja => agregarCaja(caja));
+
+      document.getElementById("resultado").textContent = "Resultado: -";
+      document.getElementById("imagenResultado").style.display = "none";
+      document.getElementById("resultadoContainer").style.display = "none";
     }
 
     function eliminarConjunto(nombre) {
@@ -270,11 +206,7 @@
         mostrarCargar();
       }
     }
-
-    // Pedir permisos para notificaciones al cargar
-    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-      Notification.requestPermission();
-    }
   </script>
 </body>
 </html>
+
