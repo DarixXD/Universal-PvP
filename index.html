@@ -18,15 +18,16 @@
       margin: 10px auto;
       max-width: 400px;
     }
-    input {
+    input, select {
       padding: 5px;
       margin: 3px;
     }
-    .conjunto {
+    .conjunto, .espera {
       background: #222;
       border: 1px solid #0ff;
-      margin: 5px;
+      margin: 5px auto;
       padding: 10px;
+      max-width: 400px;
     }
     button {
       margin: 5px;
@@ -35,29 +36,28 @@
     img {
       max-width: 200px;
       margin-top: 10px;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    #resultadoFinal {
-      border: 1px solid #0ff;
-      padding: 10px;
-      margin-top: 20px;
-      display: none;
     }
   </style>
 </head>
 <body>
   <h1>🎮 Universal PvP - Simulador de Cajas</h1>
 
+  <div>
+    <label>⏱ Tiempo de espera (segundos): </label>
+    <input id="tiempoGlobal" type="number" value="5" min="0" />
+    <br>
+    <label>🔔 Activar temporizador y notificación: </label>
+    <input id="usarTemporizador" type="checkbox" checked />
+    <br>
+    <label>📦 Permitir abrir varias cajas a la vez: </label>
+    <input id="permitirMultiples" type="checkbox" />
+  </div>
+
+  <hr>
+
   <button onclick="agregarCaja()">📦 Agregar caja</button>
   <button onclick="mostrarGuardar()">💾 Guardar conjunto</button>
-  <button onclick="mostrarCargar()">📂 Cargar conjunto</button><br>
-
-  <label><input type="checkbox" id="activarTemporizador" checked> Activar temporizador</label>
-  <label><input type="checkbox" id="permitirMultiples" checked> Permitir abrir múltiples cajas</label>
-  <br>
-  Tiempo (en segundos): <input id="tiempoEspera" type="number" value="5" min="0">
+  <button onclick="mostrarCargar()">📂 Cargar</button>
 
   <div id="guardarSeccion" style="margin-top: 10px; display: none;">
     <input id="nombreConjunto" placeholder="Nombre del conjunto">
@@ -65,20 +65,14 @@
   </div>
 
   <div id="contenedorCajas"></div>
-
   <button onclick="abrirCaja()">🎲 Abrir caja</button>
 
-  <div id="resultadoFinal">
-    <h2 id="resultado">🎉 ¡Resultado: ...!</h2>
-    <img id="imagenResultado" src="">
-    <button onclick="eliminarResultado()">❌ Eliminar resultado</button>
-  </div>
-
+  <div id="esperasActivas"></div>
   <div id="conjuntosGuardados" style="margin-top: 30px;"></div>
 
   <script>
     let cajas = [];
-    let resultadoMostrado = false;
+    let cajaAbierta = false;
 
     function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '' }) {
       const contenedor = document.getElementById("contenedorCajas");
@@ -122,13 +116,14 @@
     }
 
     function abrirCaja() {
-      if (!document.getElementById("permitirMultiples").checked && resultadoMostrado) {
-        alert("Debes eliminar el resultado anterior para abrir una nueva caja.");
+      const tiempo = parseInt(document.getElementById("tiempoGlobal").value);
+      const usarTemporizador = document.getElementById("usarTemporizador").checked;
+      const multiples = document.getElementById("permitirMultiples").checked;
+
+      if (!multiples && cajaAbierta && usarTemporizador && tiempo > 0) {
+        alert("Ya hay una caja abriéndose.");
         return;
       }
-
-      const tiempo = parseInt(document.getElementById("tiempoEspera").value) || 0;
-      const usarTemporizador = document.getElementById("activarTemporizador").checked;
 
       const total = cajas.reduce((sum, c) => sum + (isNaN(c.porcentaje) ? 0 : c.porcentaje), 0);
       if (total <= 0) {
@@ -138,49 +133,84 @@
 
       const rnd = Math.random() * total;
       let acumulado = 0;
-      let resultadoCaja;
-
       for (const c of cajas) {
         acumulado += c.porcentaje;
         if (rnd <= acumulado) {
-          resultadoCaja = c;
-          break;
+          if (usarTemporizador && tiempo > 0) {
+            iniciarTemporizador(c, tiempo);
+          } else {
+            mostrarResultado(c);
+          }
+          return;
         }
       }
+    }
 
-      if (!resultadoCaja) return;
+    function iniciarTemporizador(caja, segundos) {
+      cajaAbierta = true;
+      const esperaDiv = document.createElement("div");
+      esperaDiv.className = "espera";
 
-      if (usarTemporizador && tiempo > 0) {
-        resultadoMostrado = true;
-        document.getElementById("resultado").textContent = `⌛ Esperando ${tiempo} segundos...`;
-        document.getElementById("imagenResultado").style.display = "none";
-        document.getElementById("resultadoFinal").style.display = "block";
+      const texto = document.createElement("div");
+      const img = document.createElement("img");
+      img.style.display = "none";
 
-        setTimeout(() => {
-          mostrarResultado(resultadoCaja);
-          enviarNotificacion("¡Una de tus Cajas ha sido Abierta!");
-        }, tiempo * 1000);
-      } else {
-        mostrarResultado(resultadoCaja);
-      }
+      const btnEliminar = document.createElement("button");
+      btnEliminar.textContent = "❌ Eliminar resultado";
+      btnEliminar.style.display = "none";
+      btnEliminar.onclick = () => {
+        esperaDiv.remove();
+        cajaAbierta = false;
+      };
+
+      esperaDiv.appendChild(texto);
+      esperaDiv.appendChild(img);
+      esperaDiv.appendChild(btnEliminar);
+      document.getElementById("esperasActivas").appendChild(esperaDiv);
+
+      let tiempoRestante = segundos;
+      const intervalo = setInterval(() => {
+        texto.textContent = `⏳ Esperando: ${tiempoRestante}s`;
+        tiempoRestante--;
+
+        if (tiempoRestante < 0) {
+          clearInterval(intervalo);
+          texto.textContent = `🎉 ¡Resultado: ${caja.nombre}!`;
+          if (caja.imagen) {
+            img.src = caja.imagen;
+            img.style.display = "block";
+          }
+          btnEliminar.style.display = "inline-block";
+          cajaAbierta = false;
+
+          // Notificación
+          if (Notification.permission === "granted") {
+            new Notification("¡Una de tus Cajas Ha sido Abierta!");
+          } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+              if (permission === "granted") {
+                new Notification("¡Una de tus Cajas Ha sido Abierta!");
+              }
+            });
+          }
+        }
+      }, 1000);
     }
 
     function mostrarResultado(caja) {
-      document.getElementById("resultado").textContent = `🎉 ¡Resultado: ${caja.nombre}!`;
-      const img = document.getElementById("imagenResultado");
+      const resultadoDiv = document.createElement("div");
+      resultadoDiv.className = "espera";
+      resultadoDiv.innerHTML = `<strong>🎉 Resultado: ${caja.nombre}</strong><br>`;
       if (caja.imagen) {
+        const img = document.createElement("img");
         img.src = caja.imagen;
-        img.style.display = "block";
-      } else {
-        img.style.display = "none";
+        resultadoDiv.appendChild(img);
       }
-      document.getElementById("resultadoFinal").style.display = "block";
-      resultadoMostrado = true;
-    }
-
-    function eliminarResultado() {
-      document.getElementById("resultadoFinal").style.display = "none";
-      resultadoMostrado = false;
+      const btnEliminar = document.createElement("button");
+      btnEliminar.textContent = "❌ Eliminar resultado";
+      btnEliminar.onclick = () => resultadoDiv.remove();
+      resultadoDiv.appendChild(btnEliminar);
+      document.getElementById("esperasActivas").appendChild(resultadoDiv);
     }
 
     function mostrarGuardar() {
@@ -230,8 +260,6 @@
       cajas = [];
       document.getElementById("contenedorCajas").innerHTML = "";
       data.forEach(caja => agregarCaja(caja));
-
-      eliminarResultado();
     }
 
     function eliminarConjunto(nombre) {
@@ -243,18 +271,12 @@
       }
     }
 
-    function enviarNotificacion(mensaje) {
-      if (!("Notification" in window)) return;
-
-      if (Notification.permission === "granted") {
-        new Notification(mensaje);
-      } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then(permission => {
-          if (permission === "granted") new Notification(mensaje);
-        });
-      }
+    // Pedir permisos para notificaciones al cargar
+    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+      Notification.requestPermission();
     }
   </script>
 </body>
 </html>
+
 
