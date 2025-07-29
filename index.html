@@ -34,16 +34,16 @@
     }
     img {
       max-width: 200px;
-      margin: 10px auto;
+      margin-top: 10px;
       display: block;
-    }
-    #resultadoContainer {
-      border: 1px solid #0ff;
-      padding: 20px;
-      margin-top: 20px;
-      max-width: 500px;
       margin-left: auto;
       margin-right: auto;
+    }
+    #resultadoFinal {
+      border: 1px solid #0ff;
+      padding: 10px;
+      margin-top: 20px;
+      display: none;
     }
   </style>
 </head>
@@ -52,7 +52,12 @@
 
   <button onclick="agregarCaja()">📦 Agregar caja</button>
   <button onclick="mostrarGuardar()">💾 Guardar conjunto</button>
-  <button onclick="mostrarCargar()">📂 Cargar</button>
+  <button onclick="mostrarCargar()">📂 Cargar conjunto</button><br>
+
+  <label><input type="checkbox" id="activarTemporizador" checked> Activar temporizador</label>
+  <label><input type="checkbox" id="permitirMultiples" checked> Permitir abrir múltiples cajas</label>
+  <br>
+  Tiempo (en segundos): <input id="tiempoEspera" type="number" value="5" min="0">
 
   <div id="guardarSeccion" style="margin-top: 10px; display: none;">
     <input id="nombreConjunto" placeholder="Nombre del conjunto">
@@ -63,8 +68,8 @@
 
   <button onclick="abrirCaja()">🎲 Abrir caja</button>
 
-  <div id="resultadoContainer" style="display: none;">
-    <h2 id="resultado">Resultado: -</h2>
+  <div id="resultadoFinal">
+    <h2 id="resultado">🎉 ¡Resultado: ...!</h2>
     <img id="imagenResultado" src="">
     <button onclick="eliminarResultado()">❌ Eliminar resultado</button>
   </div>
@@ -73,6 +78,7 @@
 
   <script>
     let cajas = [];
+    let resultadoMostrado = false;
 
     function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '' }) {
       const contenedor = document.getElementById("contenedorCajas");
@@ -116,33 +122,65 @@
     }
 
     function abrirCaja() {
+      if (!document.getElementById("permitirMultiples").checked && resultadoMostrado) {
+        alert("Debes eliminar el resultado anterior para abrir una nueva caja.");
+        return;
+      }
+
+      const tiempo = parseInt(document.getElementById("tiempoEspera").value) || 0;
+      const usarTemporizador = document.getElementById("activarTemporizador").checked;
+
       const total = cajas.reduce((sum, c) => sum + (isNaN(c.porcentaje) ? 0 : c.porcentaje), 0);
       if (total <= 0) {
         alert("No hay cajas con probabilidad válida");
         return;
       }
+
       const rnd = Math.random() * total;
       let acumulado = 0;
+      let resultadoCaja;
 
       for (const c of cajas) {
         acumulado += c.porcentaje;
         if (rnd <= acumulado) {
-          document.getElementById("resultado").textContent = "🎉 ¡Resultado: " + c.nombre + "!";
-          const img = document.getElementById("imagenResultado");
-          if (c.imagen) {
-            img.src = c.imagen;
-            img.style.display = "block";
-          } else {
-            img.style.display = "none";
-          }
-          document.getElementById("resultadoContainer").style.display = "block";
-          return;
+          resultadoCaja = c;
+          break;
         }
+      }
+
+      if (!resultadoCaja) return;
+
+      if (usarTemporizador && tiempo > 0) {
+        resultadoMostrado = true;
+        document.getElementById("resultado").textContent = `⌛ Esperando ${tiempo} segundos...`;
+        document.getElementById("imagenResultado").style.display = "none";
+        document.getElementById("resultadoFinal").style.display = "block";
+
+        setTimeout(() => {
+          mostrarResultado(resultadoCaja);
+          enviarNotificacion("¡Una de tus Cajas ha sido Abierta!");
+        }, tiempo * 1000);
+      } else {
+        mostrarResultado(resultadoCaja);
       }
     }
 
+    function mostrarResultado(caja) {
+      document.getElementById("resultado").textContent = `🎉 ¡Resultado: ${caja.nombre}!`;
+      const img = document.getElementById("imagenResultado");
+      if (caja.imagen) {
+        img.src = caja.imagen;
+        img.style.display = "block";
+      } else {
+        img.style.display = "none";
+      }
+      document.getElementById("resultadoFinal").style.display = "block";
+      resultadoMostrado = true;
+    }
+
     function eliminarResultado() {
-      document.getElementById("resultadoContainer").style.display = "none";
+      document.getElementById("resultadoFinal").style.display = "none";
+      resultadoMostrado = false;
     }
 
     function mostrarGuardar() {
@@ -193,9 +231,7 @@
       document.getElementById("contenedorCajas").innerHTML = "";
       data.forEach(caja => agregarCaja(caja));
 
-      document.getElementById("resultado").textContent = "Resultado: -";
-      document.getElementById("imagenResultado").style.display = "none";
-      document.getElementById("resultadoContainer").style.display = "none";
+      eliminarResultado();
     }
 
     function eliminarConjunto(nombre) {
@@ -204,6 +240,18 @@
         delete guardados[nombre];
         localStorage.setItem("conjuntos", JSON.stringify(guardados));
         mostrarCargar();
+      }
+    }
+
+    function enviarNotificacion(mensaje) {
+      if (!("Notification" in window)) return;
+
+      if (Notification.permission === "granted") {
+        new Notification(mensaje);
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") new Notification(mensaje);
+        });
       }
     }
   </script>
