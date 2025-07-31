@@ -18,11 +18,11 @@
       margin: 10px auto;
       max-width: 400px;
     }
-    input {
+    input, select {
       padding: 5px;
       margin: 3px;
     }
-    .espera, .conjunto {
+    .conjunto, .espera {
       background: #222;
       border: 1px solid #0ff;
       margin: 5px auto;
@@ -44,6 +44,9 @@
   <h1>🎮 Universal PvP - Simulador de Cajas</h1>
 
   <div>
+    <label>⏱ Tiempo de espera (segundos): </label>
+    <input id="tiempoGlobal" type="number" value="5" min="0" />
+    <br>
     <label>🔔 Activar temporizador y notificación: </label>
     <input id="usarTemporizador" type="checkbox" checked />
     <br>
@@ -53,11 +56,11 @@
 
   <hr>
 
-  <button onclick="agregarCaja()">📦 Agregar caja</button>
+  <button onclick="agregarCaja()">➕ Agregar variable</button>
   <button onclick="mostrarGuardar()">💾 Guardar conjunto</button>
   <button onclick="mostrarCargar()">📂 Cargar</button>
 
-  <div id="guardarSeccion" style="display: none;">
+  <div id="guardarSeccion" style="margin-top: 10px; display: none;">
     <input id="nombreConjunto" placeholder="Nombre del conjunto">
     <button onclick="guardarConjunto()">Guardar</button>
   </div>
@@ -72,7 +75,7 @@
     let cajas = [];
     let cajaAbierta = false;
 
-    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '', tiempo: 5 }) {
+    function agregarCaja(data = { nombre: '', porcentaje: '', imagen: '' }) {
       const contenedor = document.getElementById("contenedorCajas");
 
       const div = document.createElement("div");
@@ -91,12 +94,6 @@
       inputImagen.placeholder = "URL de imagen";
       inputImagen.value = data.imagen;
 
-      const inputTiempo = document.createElement("input");
-      inputTiempo.type = "number";
-      inputTiempo.placeholder = "Tiempo (s)";
-      inputTiempo.value = data.tiempo ?? 5;
-      inputTiempo.min = 0;
-
       const btnEliminar = document.createElement("button");
       btnEliminar.textContent = "❌ Eliminar";
       btnEliminar.onclick = () => {
@@ -107,31 +104,31 @@
       div.appendChild(inputNombre);
       div.appendChild(inputPorcentaje);
       div.appendChild(inputImagen);
-      div.appendChild(inputTiempo);
       div.appendChild(btnEliminar);
+
       contenedor.appendChild(div);
 
       cajas.push({
         element: div,
         get nombre() { return inputNombre.value; },
         get porcentaje() { return parseFloat(inputPorcentaje.value); },
-        get imagen() { return inputImagen.value; },
-        get tiempo() { return parseInt(inputTiempo.value); }
+        get imagen() { return inputImagen.value; }
       });
     }
 
     function abrirCaja() {
+      const tiempo = parseInt(document.getElementById("tiempoGlobal").value);
       const usarTemporizador = document.getElementById("usarTemporizador").checked;
       const multiples = document.getElementById("permitirMultiples").checked;
 
-      if (!multiples && cajaAbierta) {
+      if (!multiples && cajaAbierta && usarTemporizador && tiempo > 0) {
         alert("Ya hay una caja abriéndose.");
         return;
       }
 
       const total = cajas.reduce((sum, c) => sum + (isNaN(c.porcentaje) ? 0 : c.porcentaje), 0);
       if (total <= 0) {
-        alert("No hay cajas con probabilidad válida");
+        alert("No hay variables con probabilidad válida");
         return;
       }
 
@@ -140,8 +137,8 @@
       for (const c of cajas) {
         acumulado += c.porcentaje;
         if (rnd <= acumulado) {
-          if (usarTemporizador && c.tiempo > 0) {
-            iniciarTemporizador(c, c.tiempo);
+          if (usarTemporizador && tiempo > 0) {
+            iniciarTemporizador(c, tiempo);
           } else {
             mostrarResultado(c);
           }
@@ -152,7 +149,6 @@
 
     function iniciarTemporizador(caja, segundos) {
       cajaAbierta = true;
-
       const esperaDiv = document.createElement("div");
       esperaDiv.className = "espera";
 
@@ -228,12 +224,13 @@
       const data = cajas.map(c => ({
         nombre: c.nombre,
         porcentaje: c.porcentaje,
-        imagen: c.imagen,
-        tiempo: c.tiempo
+        imagen: c.imagen
       }));
 
+      const tiempoGlobal = parseInt(document.getElementById("tiempoGlobal").value) || 0;
+
       let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
-      guardados[nombre] = data;
+      guardados[nombre] = { cajas: data, tiempo: tiempoGlobal };
       localStorage.setItem("conjuntos", JSON.stringify(guardados));
 
       alert("¡Conjunto guardado!");
@@ -260,11 +257,12 @@
 
     function cargarConjunto(nombre) {
       let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
-      const data = guardados[nombre];
+      const { cajas: data, tiempo } = guardados[nombre];
 
       cajas = [];
       document.getElementById("contenedorCajas").innerHTML = "";
       data.forEach(caja => agregarCaja(caja));
+      document.getElementById("tiempoGlobal").value = tiempo || 0;
     }
 
     function eliminarConjunto(nombre) {
@@ -282,5 +280,4 @@
   </script>
 </body>
 </html>
-
 
