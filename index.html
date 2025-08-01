@@ -91,8 +91,22 @@
       inputPorcentaje.value = data.porcentaje;
 
       const inputImagen = document.createElement("input");
-      inputImagen.placeholder = "URL de imagen";
-      inputImagen.value = data.imagen;
+      inputImagen.placeholder = "URL de imagen o subir archivo";
+      inputImagen.value = data.imagen || '';
+
+      const inputArchivo = document.createElement("input");
+      inputArchivo.type = "file";
+      inputArchivo.accept = "image/*";
+      inputArchivo.onchange = () => {
+        const file = inputArchivo.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            inputImagen.value = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      };
 
       const btnEliminar = document.createElement("button");
       btnEliminar.textContent = "❌ Eliminar";
@@ -104,6 +118,7 @@
       div.appendChild(inputNombre);
       div.appendChild(inputPorcentaje);
       div.appendChild(inputImagen);
+      div.appendChild(inputArchivo);
       div.appendChild(btnEliminar);
 
       contenedor.appendChild(div);
@@ -227,10 +242,10 @@
         imagen: c.imagen
       }));
 
-      const tiempoGlobal = parseInt(document.getElementById("tiempoGlobal").value) || 0;
+      const tiempo = parseInt(document.getElementById("tiempoGlobal").value);
 
       let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
-      guardados[nombre] = { cajas: data, tiempo: tiempoGlobal };
+      guardados[nombre] = { tiempo, variables: data };
       localStorage.setItem("conjuntos", JSON.stringify(guardados));
 
       alert("¡Conjunto guardado!");
@@ -257,12 +272,15 @@
 
     function cargarConjunto(nombre) {
       let guardados = JSON.parse(localStorage.getItem("conjuntos") || "{}");
-      const { cajas: data, tiempo } = guardados[nombre];
+      const { tiempo, variables } = guardados[nombre];
 
       cajas = [];
       document.getElementById("contenedorCajas").innerHTML = "";
-      data.forEach(caja => agregarCaja(caja));
-      document.getElementById("tiempoGlobal").value = tiempo || 0;
+      variables.forEach(caja => agregarCaja(caja));
+
+      if (!isNaN(tiempo)) {
+        document.getElementById("tiempoGlobal").value = tiempo;
+      }
     }
 
     function eliminarConjunto(nombre) {
@@ -280,4 +298,5 @@
   </script>
 </body>
 </html>
+
 
